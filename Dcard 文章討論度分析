@@ -1,0 +1,59 @@
+Dcard計算熱門文章，是利用愛心數量，而不是回覆數量來計算
+換個方式用 “文章的存活期”（以第一則回覆到最後一則回覆的時間差）來定義“討論程度”的參考值
+以「透過dcard-spider 擷取感情版文章的存活期」為例
+
+step0: 請先下載
+> pip install requests
+> pip install dcard-spider #blog:https://github.com/leVirve/dcard-spider
+> pip install python-dateutil
+
+step1:  取得資料
+a.定義存活期 - 一篇文章至少有兩則回應，而存活期為這篇文章第一則留言跟最後一則留言相差的時間
+b.查看Dcard API需要哪些欄位
+Dcard API: https://www.dcard.tw/_api/posts/［文章ｉｄ］
+- 文章id
+- 標題(title)
+- 內容(content)
+- 創立文章時間(createdAt)
+- 更新文章時間(updatedAt)
+- 回應的數量(commentCount)
+- 喜歡的數量(likeCount)
+
+from dcard import Dcard
+import dateutil.parser
+import datetime
+
+# 定義關鍵字文章回應數必須大於或等於2
+def keyword(metas):
+    for meta in metas:
+        if meta['commentCount']>=2:
+           return meta
+    # 等同於 return[ meta for meta in metas if meta ['commentCount']>=2]
+    
+if __name__ == '__main__':
+    dcard=Dcard()
+    # 關注感情版的文章，數量為100，並放入我們需要的關鍵字
+    metas = dcard.forums('relationship').get_metas(num=100, callback=keyword)
+    # 只關注留言中的時間因此在comments為True
+    posts = dcard.posts(metas).get(comments=True, links=False)
+    # 用來計算合格篇數的int變數
+    count = 0
+    # 用來存放分析後結果的dict變數
+    date={'存活期超過一天':0,'存活期未超過一天':0}
+
+    for post in posts.result():
+        count+=1
+        for comment in post['comments']:
+            if comment['floor']==1:
+                first_time = comment['createdAt']
+            if comment['floor'] ==post['commentCount']:
+                Last_time = comment['createdAt']
+        # 利用函示庫中的dateutil.parser將兩個字串轉成日期物件才可以計算時間
+        time = dateutil.parser.parse(last) - dateutil.parser.parse(first) 
+        # 將計算結果存入分析變數中
+        if time > datetime.timedelta(days = 1):
+            date['存活期超過一天']+=1
+        else:
+            date['存活期未超過一天']+=1
+    print("共有"+ str(count) + "篇符合條件")
+    print(date)
